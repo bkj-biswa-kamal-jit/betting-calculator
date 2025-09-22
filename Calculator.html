@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Betting Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background-color: #1e1e2f;
+      color: #eee;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      text-align: center;
+      padding: 15px;
+      background: #111827;
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      border-bottom: 2px solid #2563eb;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 20px;
+      padding: 20px;
+      height: calc(100vh - 60px);
+      box-sizing: border-box;
+    }
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      background: #2d2d3d;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .card h2 {
+      margin-bottom: 15px;
+      font-size: 18px;
+      color: #60a5fa;
+      border-bottom: 1px solid #3b3b4f;
+      padding-bottom: 5px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+      background: #1f2937;
+      color: #fff;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      background: #2563eb;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .progress-container {
+      margin-top: 15px;
+      background: #374151;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 20px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #22d3ee);
+      width: 0%;
+      transition: width 0.5s ease-in-out;
+    }
+    .results {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+    th {
+      background: #2563eb;
+      color: #fff;
+    }
+    tr:nth-child(even) {
+      background: #2d2d3d;
+    }
+    tr:nth-child(odd) {
+      background: #1f2937;
+    }
+    .profit { color: #10b981; }
+    .loss { color: #ef4444; }
+    .scrollable {
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+  </style>
+</head>
+<body>
+  <header>⚡ Betting Dashboard (INR)</header>
+  
+  <div class="container">
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <!-- Betting Target Progress -->
+      <div class="card">
+        <h2>🎯 Betting Target Progress</h2>
+        <label>Starting Amount (₹)</label>
+        <input type="number" id="startAmount" value="400">
+        
+        <label>Target Amount (₹)</label>
+        <input type="number" id="targetAmount" value="4000">
+        
+        <label>Current Amount (₹)</label>
+        <input type="number" id="currentAmount" value="610">
+        
+        <button onclick="calculateProgress()">Update Progress</button>
+        
+        <div class="progress-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <p id="progressText">Progress: 0%</p>
+      </div>
+
+      <!-- Betting Odds Calculator -->
+      <div class="card">
+        <h2>📊 Bet Calculator</h2>
+        <label>Odds Format</label>
+        <select id="oddsFormat">
+          <option value="decimal">Decimal</option>
+        </select>
+        
+        <label>Odds (e.g. 2.5)</label>
+        <input type="number" id="odds" value="1.66" step="0.01">
+        
+        <label>Stake (₹)</label>
+        <input type="number" id="stake" value="1000">
+        
+        <label>Initial Balance (optional)</label>
+        <input type="number" id="balance" value="2000">
+        
+        <label>Result</label>
+        <select id="result">
+          <option value="win">Win</option>
+          <option value="loss">Loss</option>
+        </select>
+        
+        <button onclick="addBet()">Calculate & Add</button>
+        
+        <p id="summary">Net Profit/Loss: ₹0 | Total Winning: ₹0 | Total Bets: 0</p>
+      </div>
+    </div>
+
+    <!-- Right Panel: Results -->
+    <div class="results card">
+      <h2>📜 Betting Results</h2>
+      <div class="scrollable">
+        <table>
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Odds</th>
+              <th>Stake (₹)</th>
+              <th>Result</th>
+              <th>Profit (₹)</th>
+              <th>Total Return (₹)</th>
+              <th>Cumulative (₹)</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Progress Calculator
+    function calculateProgress() {
+      let start = parseFloat(document.getElementById("startAmount").value) || 0;
+      let target = parseFloat(document.getElementById("targetAmount").value) || 0;
+      let current = parseFloat(document.getElementById("currentAmount").value) || 0;
+
+      let targetProfit = target - start;
+      let achievedProfit = current - start;
+      let percent = targetProfit > 0 ? (achievedProfit / targetProfit) * 100 : 0;
+      percent = Math.max(0, Math.min(100, percent));
+
+      document.getElementById("progressBar").style.width = percent + "%";
+      document.getElementById("progressText").innerText = 
+        `Progress: ${percent.toFixed(2)}% (₹${achievedProfit} / ₹${targetProfit})`;
+    }
+
+    // Betting Odds Calculator
+    let bets = [];
+    function addBet() {
+      let odds = parseFloat(document.getElementById("odds").value);
+      let stake = parseFloat(document.getElementById("stake").value);
+      let result = document.getElementById("result").value;
+      
+      let profit = 0, totalReturn = 0;
+      if (result === "win") {
+        profit = (odds * stake) - stake;
+        totalReturn = odds * stake;
+      } else {
+        profit = -stake;
+        totalReturn = 0;
+      }
+      
+      let cumulative = (bets.length > 0 ? bets[bets.length-1].cumulative : 0) + profit;
+      let bet = {
+        time: new Date().toLocaleString(),
+        odds, stake, result, profit, totalReturn, cumulative
+      };
+      bets.push(bet);
+      renderTable();
+    }
+    function renderTable() {
+      let table = document.getElementById("resultsTable");
+      table.innerHTML = "";
+      let net = 0, totalWinning = 0;
+      
+      bets.forEach((b, i) => {
+        net += b.profit;
+        if (b.result === "win") totalWinning += b.totalReturn;
+        let row = `<tr>
+          <td>${b.time}</td>
+          <td>${b.odds}</td>
+          <td>${b.stake}</td>
+          <td class="${b.result==='win'?'profit':'loss'}">${b.result}</td>
+          <td class="${b.profit>=0?'profit':'loss'}">${b.profit}</td>
+          <td>${b.totalReturn}</td>
+          <td>${b.cumulative}</td>
+          <td><button onclick="deleteBet(${i})">❌</button></td>
+        </tr>`;
+        table.innerHTML += row;
+      });
+      document.getElementById("summary").innerText = 
+        `Net Profit/Loss: ₹${net} | Total Winning: ₹${totalWinning} | Total Bets: ${bets.length}`;
+    }
+    function deleteBet(index) {
+      bets.splice(index, 1);
+      renderTable();
+    }
+
+    // Initialize progress
+    calculateProgress();
+  </script>
+</body>
+</html>
